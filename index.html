@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="WHAT-Trainer">
+<title>WHAT-Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mbt: #ef4444; --mbt-bg: #fef2f2;
+    --ifv: #f97316; --ifv-bg: #fff7ed;
+    --apc: #ca8a04; --apc-bg: #fefce8;
+    --eng: #a855f7; --eng-bg: #faf5ff;
+    --ad:  #3b82f6; --ad-bg:  #eff6ff;
+    --arty:#92400e; --arty-bg:#fdf4e8;
+    --log: #16a34a; --log-bg: #f0fdf4;
+    --master:#0f172a; --master-bg:#f8fafc;
+    --w-col: #3b82f6; --h-col: #16a34a; --a-col: #ef4444; --t-col: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Nunito', 'Segoe UI', -apple-system, sans-serif;
+    background: #f8fafc; color: #1e293b;
+    max-width: 500px; margin: 0 auto;
+    min-height: 100vh; min-height: 100dvh;
+    overscroll-behavior: none;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  img { max-width: 100%; display: block; }
+  button { font-family: inherit; cursor: pointer; border: none; }
+  button:active { transform: scale(0.97); }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  .page { padding: 0 20px 40px; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pop { 0%{transform:scale(.8)} 50%{transform:scale(1.05)} 100%{transform:scale(1)} }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .fade-in { animation: fadeIn .3s ease both; }
+
+  .card {
+    background: #fff; border: 2px solid #e2e8f0; border-radius: 20px;
+    padding: 16px 18px; transition: transform .12s, box-shadow .12s;
+    box-shadow: 0 2px 8px rgba(0,0,0,.03);
+  }
+  .card:active { transform: scale(.98); }
+  .card.locked { background: #f1f5f9; opacity: .45; pointer-events: none; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 24px; padding: 4px 14px; font-size: 12px; font-weight: 800;
+  }
+  .btn-primary {
+    width: 100%; padding: 16px; border-radius: 16px;
+    font-weight: 800; font-size: 16px; color: #fff; border: none;
+  }
+  .progress-bar { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-bottom: 20px; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+
+  .what-card {
+    background: #f8fafc; border: 1.5px solid #f1f5f9; border-radius: 14px;
+    padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: all .2s;
+  }
+  .what-card.open { border-color: currentColor; }
+  .what-card .body { margin: 10px 0 0 42px; color: #475569; font-size: 13px; line-height: 1.7; animation: fadeIn .2s ease; }
+
+  .vehicle-img {
+    width: 100%; height: 220px; object-fit: cover; background: #e2e8f0;
+  }
+  .vehicle-img-sm {
+    width: 100px; height: 64px; object-fit: cover; border-radius: 12px; background: #e2e8f0; flex-shrink: 0;
+  }
+  .img-fallback {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #f1f5f9; border: 2px dashed #cbd5e1; font-size: 11px; color: #94a3b8; font-weight: 700;
+  }
+  .img-fallback span.emoji { font-size: 28px; margin-bottom: 2px; }
+
+  .feedback {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 14px)); z-index: 100;
+    animation: slideUp .25s ease;
+  }
+  .feedback.correct { background: #f0fdf4; border-top: 3px solid #4ade80; }
+  .feedback.wrong   { background: #fef2f2; border-top: 3px solid #ef4444; }
+  .feedback .inner { max-width: 480px; margin: 0 auto; }
+
+  .option-btn {
+    background: #fff; border: 2px solid #e2e8f0; border-radius: 14px;
+    padding: 14px; cursor: pointer; transition: all .15s; text-align: left;
+    width: 100%; font-size: 13px; color: #475569; line-height: 1.5;
+  }
+  .option-btn.correct { background: #f0fdf4; border-color: #4ade80; }
+  .option-btn.wrong   { background: #fef2f2; border-color: #ef4444; }
+
+  .id-option {
+    background: #fff; border: 2px solid #e2e8f0; border-radius: 14px;
+    padding: 14px 10px; font-weight: 800; font-size: 14px; color: #0f172a;
+    cursor: pointer; transition: all .15s; text-align: center;
+  }
+  .id-option.correct { background: #f0fdf4; border-color: #4ade80; color: #16a34a; }
+  .id-option.wrong   { background: #fef2f2; border-color: #ef4444; color: #dc2626; }
+
+  .hint-btn {
+    width: 100%; padding: 10px; background: #fffbeb; border: 1.5px dashed #fde68a;
+    border-radius: 12px; color: #92400e; font-size: 13px; font-weight: 700;
+  }
+  .tip-box {
+    background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 16px;
+    padding: 14px 16px; cursor: pointer;
+  }
+  .tip-item { color: #78350f; font-size: 13px; line-height: 1.6; padding: 2px 0 2px 20px; position: relative; }
+  .tip-item::before { content: '›'; position: absolute; left: 6px; color: #f59e0b; font-weight: 800; }
+
+  .back-btn { background: none; color: #3b82f6; font-size: 15px; padding: 16px 0; font-weight: 700; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+  .counter { font-size: 13px; color: #94a3b8; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════
+const V = [
+  // MBT
+  { id:"t72", name:"T-72B3", type:"MBT", cat:"mbt", img:"images/t72.jpg",
+    desc:"Rysslands arbetshäst. Moderniserad 70-talsdesign, mest använda stridsvagnen i Ukraina.",
+    what:{
+      w:"Larvband, 6 stödhjul/sida. Litet gap mellan hjul 1 & 2 (framifrån). Gummiinklädda hjul. 3 stödvalsar ovanpå.",
+      h:"Låg, kompakt silhuett. Välvd glacisplåt med Kontakt-5 eller Relikt ERA-block. Dieselmotor baktill. Ofta 'cope cages' (gallerskydd) mot drönare.",
+      a:"125 mm 2A46M-5 slätborrad kanon. Automat-laddare → 3 mans besättning. Kan skjuta ATGM genom kanonen. 12,7 mm Kord + 7,62 mm PKT koaxialt.",
+      t:"GJUTET, RUNDAT torn med Kontakt-5 ERA. Sosna-U sikte (kubisk box höger sida). Vindmätare på taket. 'Ögonbryn'-form framtill."
+    },
+    tips:["Rundat gjutet torn (≠ T-90M som har svetsad kantig front)","Sosna-U sikte = kubisk box på höger sida av tornet","6 stödhjul, litet gap mellan 1:a & 2:a","Cope cages (gallerskydd) vanliga i Ukraina"]
+  },
+  { id:"t80", name:"T-80BVM", type:"MBT", cat:"mbt", img:"images/t80.jpg",
+    desc:"Gasturbin-stridsvagn. Snabb, smidig. Återaktiverad från lager för Ukraina.",
+    what:{
+      w:"Larvband, 6 stödhjul/sida men MINDRE DIAMETER än T-72/T-90. Tydlig visuell skillnad om man vet vad man letar efter.",
+      h:"Liknande T-72 men med GASTURBIN (GTD-1250). Avgasutlopp på OVANSIDAN baktill (ej bak som diesel). ERA på glacis.",
+      a:"125 mm 2A46M-4 kanon. Automat-laddare. 9M119 Refleks ATGM. 12,7 mm NSVT på taket.",
+      t:"Gjutet, rundat torn (liknande T-72). Relikt ERA i ORDNADE RADER på tornsidorna. Ofta extra ERA-block."
+    },
+    tips:["MINDRE stödhjul = lättaste sättet att skilja från T-72","Gasturbin: avgaser UPPÅT baktill (ej rakt bak)","Relikt ERA i ordnade, prydliga rader","Snabbare acceleration, karakteristiskt vinande turbinljud"]
+  },
+  { id:"t90", name:"T-90M Proryv", type:"MBT", cat:"mbt", img:"images/t90.jpg",
+    desc:"Rysslands mest moderna stridsvagn i aktiv tjänst. Nytt svetsad torn, avancerad eldledning.",
+    what:{
+      w:"Larvband, 6 stödhjul/sida (T-72-chassi). Liknande storlek som T-72.",
+      h:"T-72-baserat chassi med Relikt ERA. Ofta Nakidka radar-absorberande beläggning (mörkgrå/svart duk). Dieselmotor baktill.",
+      a:"125 mm 2A46M-5 med Kalina eldledning. Franskt CATHERINE-FC termisk sikte. 12,7 mm Kord RCWS (fjärrstyrt!) på taket.",
+      t:"SVETSAD, KANTIG tornfront (≠ gjuten rund som T-72!). Relikt ERA integrerat. 'Tsjeburashka' = 2 runda IR-lampor vid kanonen."
+    },
+    tips:["SVETSAD kantig tornfront = tydligaste skillnaden mot T-72","'Tsjeburashka' IR-lampor (2 runda lampor vid kanonbasen)","Nakidka-duk ger mörkare utseende","Kord RCWS = fjärrstyrt vapen på torntaket"]
+  },
+  { id:"t14", name:"T-14 Armata", type:"MBT", cat:"mbt", img:"images/t14.jpg",
+    desc:"Nästa-gen stridsvagn. Obemannat torn, besättning i pansrad kapsel. Extremt få i tjänst.",
+    what:{
+      w:"Larvband med 7 STÖDHJUL/sida (≠ 6 som alla andra ryska MBT!). Helt ny fjädring.",
+      h:"Helt ny design. Besättning i pansrad kapsel FRAMTILL, isolerad från ammunition. Bred, hög profil.",
+      a:"125 mm 2A82-1M kanon (ny gen). Helautomatiserad. Afganit aktiv skyddssystem (APS). 12,7 mm RCWS.",
+      t:"OBEMANNAT torn! Inga luckor för besättning. Stort, kantigt, modernt. Afganit APS-sensorer runt tornet."
+    },
+    tips:["7 stödhjul (alla andra har 6!)","OBEMANNAT torn = inga besättningsluckor","Helt ny, modern siluett, radikalt annorlunda","Extremt sällsynt på slagfältet"]
+  },
+  // IFV
+  { id:"bmp1", name:"BMP-1", type:"IFV", cat:"ifv", img:"images/bmp1.jpg",
+    desc:"Världens första IFV (1966). Föråldrad men fortfarande i bruk.",
+    what:{
+      w:"Larvband, 6 stödhjul/sida. Små, jämnt fördelade. Främre drivhjul.",
+      h:"Låg, kilformad front. Aluminiumpansar (mycket svagt). Motor framtill HÖGER, förare framtill VÄNSTER. Trupprum baktill.",
+      a:"73 mm 2A28 Grom kanon (KORT, TJOCK pipa – låghastighetsvapen). Malyutka ATGM ovanpå tornet på räls. 7,62 mm PKT.",
+      t:"LITET enmanstorn. 73 mm = kort, tjock pipa. Malyutka ATGM synlig på räls ovanpå. Kompakt, rundare form."
+    },
+    tips:["73 mm KORT, TJOCK pipa (≠ BMP-2 lång smal 30mm)","Malyutka ATGM på räls ovanpå tornet","Enmanstorn (BMP-2 har tvåmanstorn)","Kilformad vattenlinjeform"]
+  },
+  { id:"bmp2", name:"BMP-2", type:"IFV", cat:"ifv", img:"images/bmp2.jpg",
+    desc:"Rysslands vanligaste stridsfordon. 1980-tal men massanvänt i Ukraina.",
+    what:{
+      w:"Larvband, 6 stödhjul/sida. Samma löpverk som BMP-1. Främre drivhjul.",
+      h:"Samma grundhull som BMP-1. Aluminium, svagt pansar. Motor framtill höger. Trupprum baktill (6+3).",
+      a:"30 mm 2A42 AUTOMATKANON (LÅNG, SMAL pipa). Konkurs ATGM ovanpå tornet (kantig lanseringslåda). 7,62 mm PKT.",
+      t:"TVÅMANS torn, förskjutet åt VÄNSTER. 30 mm kanon sticker ut långt framåt. Konkurs ATGM-låda synlig ovanpå."
+    },
+    tips:["30 mm LÅNG, SMAL pipa (≠ BMP-1 kort tjock 73mm)","Konkurs ATGM = kantig låda ovanpå tornet","TVÅMANS torn förskjutet åt vänster","Samma hull som BMP-1 – skiljs på torn/vapen"]
+  },
+  { id:"bmp3", name:"BMP-3", type:"IFV", cat:"ifv", img:"images/bmp3.jpg",
+    desc:"Tungt beväpnat stridsfordon. Duo-kanon (100+30mm). Motor baktill.",
+    what:{
+      w:"Larvband, 6 stödhjul/sida. Vattenjet. Större och tyngre än BMP-1/2.",
+      h:"Motor BAKTILL (≠ BMP-1/2 motor framtill!). Truppen stiger av FRAMÅT. Aluminium+stål. Bredare profil.",
+      a:"DUO-KANON: 100 mm 2A70 + 30 mm 2A72 PARALLELLT. Kan skjuta ATGM genom 100mm. 3 kulsprutor. Extremt beväpnad.",
+      t:"STORT, BRETT torn (markant större än BMP-2!). Duo-kanon synlig (2 pipor parallellt). Rund form, plan front."
+    },
+    tips:["DUO-KANON (100+30mm parallellt) = unikt!","STORT torn (≠ BMP-2 litet torn)","Motor BAKTILL → trupp fram (omvänt vs BMP-1/2!)","Bredare, tyngre silhuett"]
+  },
+  { id:"bmd4", name:"BMD-4M", type:"IFV", cat:"ifv", img:"images/bmd4.jpg",
+    desc:"Luftlandsättningsfordon (VDV). BMP-3-torn på en liten hull. Kan fällas med fallskärm.",
+    what:{
+      w:"Larvband med 5 STÖDHJUL/sida (≠ 6 på BMP-familjen!). Hydroneumatisk fjädring (höj-/sänkbar).",
+      h:"MYCKET LITEN, smal hull – designad för fallskärmsfällning. Aluminium. Kan simma. Smalare och lägre än BMP-3.",
+      a:"SAMMA beväpning som BMP-3: 100mm + 30mm duo-kanon. Kan skjuta ATGM. Tungt beväpnad för sin storlek.",
+      t:"SAMMA torn som BMP-3 (Bakhcha-U). Tornet ser OPROPORTIONERLIGT STORT ut på den lilla hullen."
+    },
+    tips:["5 stödhjul (≠ 6 på BMP-3!)","BMP-3-torn på LITEN hull = oproportionerligt","Kan fällas med fallskärm (VDV-fordon)","Hydroneumatisk fjädring (höj-/sänkbar)"]
+  },
+  // APC
+  { id:"btr80", name:"BTR-80", type:"APC", cat:"apc", img:"images/btr80.jpg",
+    desc:"8-hjulig pansarterrängbil. Äldre modell med 14,5mm kulspruta.",
+    what:{
+      w:"8 HJUL (8x8, 4 axlar). Alla drivna. Kan simma. HJUL = BTR-familjen.",
+      h:"Båtformad, svetsad stål. Svagt pansar. Luckor på SIDORNA för trupp. Vattenjet baktill.",
+      a:"14,5 mm KPVT tungkulspruta (≠ BTR-82A 30mm). 7,62 mm PKT koaxialt. Inget ATGM.",
+      t:"LITET enmanstorn med KPVT. Kort vapenpipa. Sitter centralt-framåt."
+    },
+    tips:["8 hjul = BTR-familjen (omedelbar identifiering)","14,5mm KPVT = kort pipa (≠ BTR-82A 30mm längre pipa)","Äldre, enklare torn","Båtformad hull, kan simma"]
+  },
+  { id:"btr82a", name:"BTR-82A", type:"APC", cat:"apc", img:"images/btr82a.jpg",
+    desc:"Moderniserad BTR-80 med 30mm automatkanon. Rysslands standard-APC.",
+    what:{
+      w:"8 HJUL (8x8). Identiskt chassi som BTR-80.",
+      h:"Samma båtformade hull som BTR-80. Svetsad stål, svagt pansar.",
+      a:"30 mm 2A72 AUTOMATKANON (≠ BTR-80 14,5mm). 7,62 mm PKT. Inget ATGM som standard.",
+      t:"Enmanstorn med 30mm kanon = LÄNGRE PIPA än BTR-80. Modernt torn, sitter centralt-framåt."
+    },
+    tips:["30mm kanon = längre pipa (≠ BTR-80 14,5mm)","Samma hull som BTR-80 – skiljs på vapnet!","8 hjul, båtformad hull","Modernt enmanstorn"]
+  },
+  { id:"mtlb", name:"MT-LB", type:"APC", cat:"apc", img:"images/mtlb.jpg",
+    desc:"Lätt bandvagn. Billig, enkel 'plåtlåda'. Massivt använd i Ukraina.",
+    what:{
+      w:"Larvband, 6 LIKA STORA jämnt fördelade stödhjul. BREDA band (snö/lera).",
+      h:"Extremt LÅG, PLATT profil – 'plåtlåda'. Tunt stålpansar (14mm). Kan simma. Enklast möjliga.",
+      a:"Normalt bara 7,62 mm PKT. Ofta improviserade vapen i Ukraina (ZU-23-2, AGS-17 etc.).",
+      t:"MINIMALT torn (kulsprutehuv) eller INGET torn alls. Ofta improviserade vapenstationer."
+    },
+    tips:["Extremt låg, platt 'plåtlåda'-profil","Minimalt/inget torn","Breda band för mjuk mark","Ofta improviserade vapen i Ukraina"]
+  },
+  // ENGINEER
+  { id:"imr2", name:"IMR-2", type:"CEV", cat:"eng", img:"images/imr2.jpg",
+    desc:"Ingenjörfordon på T-72-chassi. Kranbom och schaktblad för röjning.",
+    what:{
+      w:"T-72-chassi: larvband, 6 stödhjul/sida.",
+      h:"T-72-hull men UTAN stridstorn. Förhöjt förarhus. Schaktblad/dozerblad FRAMTILL.",
+      a:"INGEN KANON. Hydraulisk KRANBOM (teleskoparm) för att flytta hinder. Ibland 12,7mm för självförsvar.",
+      t:"INGET STRIDSTORN. Förhöjd kabin med KRANBOM ovanpå. Omedelbart igenkännbart."
+    },
+    tips:["T-72-chassi MEN inget stridstorn","KRANBOM (teleskoparm) ovanpå","DOZERBLAD framtill","Förhöjd kabinstruktur istället för torn"]
+  },
+  { id:"bmr3m", name:"BMR-3M", type:"MCV", cat:"eng", img:"images/bmr3m.jpg",
+    desc:"Minröjningsfordon på T-90-chassi. Tung, pansrad minröjare.",
+    what:{
+      w:"T-72/T-90-chassi: larvband, 6 stödhjul/sida.",
+      h:"Modifierad T-90 hull. KRAFTIGT FÖRHÖJD front med extra pansar. V-format skrov mot minor.",
+      a:"Ingen offensiv beväpning. 12,7 mm kulspruta för självförsvar. Minröjningsutrustning framtill.",
+      t:"INGET STRIDSTORN. Låg kupol/observation. KMT-7 minplog eller minrulle framtill."
+    },
+    tips:["T-90-chassi utan stridstorn","Minröjningsutrustning framtill (plog/rulle)","Kraftigt förhöjd, extra pansrad front","Minröjningssläp kan finnas baktill"]
+  },
+  { id:"ur77", name:"UR-77 Meteorit", type:"MCV", cat:"eng", img:"images/ur77.jpg",
+    desc:"Minröjningsraket. Skjuter linjeminladdning för att röja minfält.",
+    what:{
+      w:"Larvband, tung artillerichassityp. Breda band. Stort chassi.",
+      h:"Baserat på 2S7-chassi. Stort, långt. Pansrat men ej för strid. Utskjutningsramp baktill.",
+      a:"2 st linjeminladdningar (UZP-77) med raketmotor. Skapar röjd korridor. Ingen vanlig beväpning.",
+      t:"INGET TORN. 2 LANSERINGS-RAMPER baktill (avlånga lådor/tuber). Karaktäristisk profil."
+    },
+    tips:["2 lanseringsramper/tuber baktill","Inget torn – bara minröjningsutrustning","Stort, långt chassi","Skjuter linjeminladdningar med raket"]
+  },
+  // AIR DEFENSE
+  { id:"tor", name:"Tor-M2", type:"SAM", cat:"ad", img:"images/tor.jpg",
+    desc:"Korträckviddigt luftvärn. Kompakt, bandgående. Robotar dolda inuti tornet.",
+    what:{
+      w:"Larvband, kompakt chassi. GM-5955 chassi med småhjul.",
+      h:"Kompakt bandchassi, lägre profil. Designat att följa mekaniserade förband.",
+      a:"8–16 st SAM-robotar INUTI tornet (vertikala lanseringstuber). Räckvidd ~16 km. Helautomatiserat.",
+      t:"STORT, KANTIGT, BOXLIKT torn med fasetterad radarpanel ovanpå. Robotarna sitter DOLDA inuti tornet."
+    },
+    tips:["Stort, KANTIGT box-torn","Robotar DOLDA inuti tornet (ej synliga)","Fasetterad radar ovanpå","Kompakt bandchassi"]
+  },
+  { id:"pantsir", name:"Pantsir-S1", type:"SPAAG+SAM", cat:"ad", img:"images/pantsir.jpg",
+    desc:"Kombinerat kanon/robot-luftvärn. Både 30mm kanoner OCH SAM-robotar.",
+    what:{
+      w:"Ofta monterad på 8x8 HJULCHASSI (KamAZ-6560). Finns även på band.",
+      h:"KamAZ lastbilschassi (8x8). Förarhytt framtill. Vapensystem på flaket. Stort, högt fordon.",
+      a:"KOMBINATION: 2× 30mm 2A38M automatkanoner + 12× 57E6 SAM-robotar i tuber. Unik dubbel kapacitet!",
+      t:"MASSIV vapenstation med SYNLIGA robottuber (6 per sida) OCH 2 kanoner. Stor radarskål bakom."
+    },
+    tips:["SYNLIGA robottuber (6+6) på sidorna","2× 30mm kanoner i mitten","Ofta på 8x8 lastbilschassi","Stor roterbar radarskål ovanpå/bakom"]
+  },
+  { id:"buk", name:"Buk-M2", type:"SAM", cat:"ad", img:"images/buk.jpg",
+    desc:"Medeldistans luftvärn. 4 robotar synligt monterade på ramp.",
+    what:{
+      w:"Larvband, GM-569 chassi. 6 stödhjul/sida. Tungt bandchassi.",
+      h:"Stort bandchassi. Pansrad kabin framtill. Raketramp baktill.",
+      a:"4× 9M317 SAM-robotar på ÖPPEN RAMP ovanpå (SYNLIGA!). Räckvidd ~50 km.",
+      t:"INGEN konventionellt torn. Roterbar RAKETRAMP med 4 robotar i en rad. Radarpanel integrerad."
+    },
+    tips:["4 robotar SYNLIGT på ramp (pekar uppåt/framåt)","Bandchassi, inget konventionellt torn","Stor radaryta integrerad i rampen","Ökänt: sköt ner MH17 (2014)"]
+  },
+  { id:"krasukha", name:"Krasukha-4", type:"EW", cat:"ad", img:"images/krasukha.jpg",
+    desc:"Elektronisk krigföring. Stör fiendens radar och kommunikation.",
+    what:{
+      w:"8x8 HJULCHASSI (BAZ-6910). Stort lastbilschassi.",
+      h:"Stor lastbil med container/kaross baktill. Specialutrustning.",
+      a:"INGA VAPEN. Elektronisk störning av radar, satellitkommunikation, drönarkontroll.",
+      t:"INGET TORN. PARABOLISK ANTENN/STÖRSÄNDARE ovanpå eller på sidan. Ibland i container."
+    },
+    tips:["Stor PARABOLISK antenn/skål","Ingen beväpning – telekrig/EW","8x8 lastbilschassi","Container-/karosstyp baktill"]
+  },
+  // ARTILLERY
+  { id:"2s19", name:"2S19 Msta-S", type:"SPG", cat:"arty", img:"images/2s19.jpg",
+    desc:"152mm självgående haubits. Rysslands standard tunga artilleri.",
+    what:{
+      w:"Larvband (T-80-chassi). 6 stödhjul/sida. Tungt, stort chassi.",
+      h:"T-80 chassi, motor FRAMTILL. Förlängt. Ammunitionsförråd i hullen.",
+      a:"152 mm 2A64 haubits med LÅNG pipa och STOR MYNNINGSBROMS (rund, distinkt). Räckvidd ~25 km.",
+      t:"ENORMT, KANTIGT torn som upptar hela bakkroppen. MYCKET större än MBT-torn. Lång pipa med mynningsbroms."
+    },
+    tips:["ENORMT kantigt torn (≠ stridsvagnstorn)","Lång 152mm pipa med stor, rund mynningsbroms","T-80-chassi, motor framtill","Mycket större profil än MBT"]
+  },
+  { id:"2s3", name:"2S3 Akatsiya", type:"SPG", cat:"arty", img:"images/2s3.jpg",
+    desc:"Äldre 152mm haubits. Runt torn. Fortfarande i bruk.",
+    what:{
+      w:"Larvband (SAU-247 chassi). 6 stödhjul. Bredare gap mellan hjulen.",
+      h:"Artillerispecifikt chassi (≠ stridsvagnschassi). Motor framtill. Lägre, bredare profil.",
+      a:"152 mm 2A33 haubits. KORTARE pipa än 2S19. Mynningsbroms. Räckvidd ~17 km.",
+      t:"RUNT torn (≠ 2S19 kantigt!). Mindre och rundare. Kortare pipa. Äldre utseende."
+    },
+    tips:["RUNT torn (≠ 2S19 kantigt)","KORTARE pipa än 2S19","Äldre, specifikt artillerichassi","Mindre, mer kompakt helhet"]
+  },
+  { id:"grad", name:"BM-21 Grad", type:"MLRS", cat:"arty", img:"images/grad.jpg",
+    desc:"40-pipigt raketartilleri. Ikoniskt sovjetiskt vapen.",
+    what:{
+      w:"LASTBILSCHASSI med 6 hjul (Ural-375D 6x6). Vanlig militärlastbil.",
+      h:"Standard militärlastbil med förarhytt. Raketrampen på flaket. ÖPPET, ingen pansar.",
+      a:"40× 122mm raketrör i REKTANGULÄRT 4×10 mönster. Salva på 20 sek. Räckvidd ~20 km.",
+      t:"INGET TORN. REKTANGULÄRT RAKETRÖRSPAKET (4 rader × 10 tuber = 40st). Kan rotera."
+    },
+    tips:["40 raketrör i 4×10 rektangulärt mönster","Monterat på vanlig lastbil (6x6)","Inget pansar – öppen lastbil","Ikoniskt 'orgel'-ljud vid avfyrning"]
+  },
+  { id:"tos1a", name:"TOS-1A Solntsepyok", type:"TOS", cat:"arty", img:"images/tos1a.jpg",
+    desc:"Termobariskt raketsystem på T-72-chassi. Fruktansvärt vapen.",
+    what:{
+      w:"T-72 BANDCHASSI (larvband, 6 stödhjul/sida). Tungt, pansrat – ej lastbil!",
+      h:"T-72 hull. Motor baktill. Tungt pansrad (kort räckvidd → nära fronten → behöver pansar).",
+      a:"24× 220mm termobariska raketer. Kort räckvidd ~6 km. TERMOBARISK = bränsle-luft-explosion.",
+      t:"INGET KANONTORN. RAKETRÖRSPAKET (24 tuber) ovanpå T-72-chassit. Som BM-21 ramp PÅ en stridsvagn."
+    },
+    tips:["Raketramp PÅ T-72-bandchassi (≠ Grad på lastbil!)","24 tuber (≠ Grad 40 tuber)","PANSRAD = kort räckvidd, nära fronten","Termobarisk = extremt destruktiv"]
+  },
+  // LOGISTICS
+  { id:"kamaz", name:"KamAZ-5350", type:"Logistik", cat:"log", img:"images/kamaz.jpg",
+    desc:"Standardlastbil 6x6. Ryggraden i rysk militärlogistik.",
+    what:{
+      w:"6 HJUL (6x6, 3 axlar). Bakre 2 axlar har DUBBELHJUL (tvilling). Stor terrängkapacitet.",
+      h:"Standard militär lastbilshytt. KANTIGT förarhus. Grönt/kaki flak. Varierande flak (platt, tält, container).",
+      a:"Normalt OBEVÄPNAD. Ibland kulspruta för självförsvar. Logistikfordon.",
+      t:"INGET TORN. Ren lastbil."
+    },
+    tips:["6x6 lastbil med DUBBELHJUL bak","KANTIG, modern förarhytt","Varierande flak (kapell/container/öppet)","Ryggraden i rysk logistik"]
+  },
+  { id:"ural", name:"Ural-4320", type:"Logistik", cat:"log", img:"images/ural.jpg",
+    desc:"Äldre 6x6 lastbil. Rund motorhuv – klassisk sovjetisk design.",
+    what:{
+      w:"6 HJUL (6x6, 3 axlar). Dubbelhjul bak. Liknande som KamAZ.",
+      h:"Karakteristisk RUNDAD MOTORHUV framtill (≠ KamAZ kantig!). Äldre, enklare hytt.",
+      a:"OBEVÄPNAD. Transportfordon. Ofta bas för vapensystem (t.ex. BM-21 Grad).",
+      t:"INGET TORN. Ren lastbil."
+    },
+    tips:["RUNDAD MOTORHUV (≠ KamAZ kantig!)","Äldre, enklare, rundare design","Ofta bas för BM-21 Grad","6x6 med dubbelhjul bak"]
+  }
+];
+
+const CATS = {
+  mbt:{l:"Stridsvagnar",c:"var(--mbt)",bg:"var(--mbt-bg)",e:"🔴"},
+  ifv:{l:"Stridsfordon",c:"var(--ifv)",bg:"var(--ifv-bg)",e:"🟠"},
+  apc:{l:"Trupptransport",c:"var(--apc)",bg:"var(--apc-bg)",e:"🟡"},
+  eng:{l:"Ingenjör",c:"var(--eng)",bg:"var(--eng-bg)",e:"🟣"},
+  ad:{l:"Luftvärn / Telekrig",c:"var(--ad)",bg:"var(--ad-bg)",e:"🔵"},
+  arty:{l:"Artilleri / Raket",c:"var(--arty)",bg:"var(--arty-bg)",e:"🟤"},
+  log:{l:"Logistik",c:"var(--log)",bg:"var(--log-bg)",e:"🟢"},
+  master:{l:"Mästarprov",c:"var(--master)",bg:"var(--master-bg)",e:"🏆"}
+};
+const WL={w:"Wheels",h:"Hull",a:"Armament",t:"Turret"};
+const WI={w:"◎",h:"▬",a:"💥",t:"◉"};
+const WC={w:"var(--w-col)",h:"var(--h-col)",a:"var(--a-col)",t:"var(--t-col)"};
+
+function getV(id){return V.find(v=>v.id===id)}
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]}return b}
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let state = { screen:"home", mod:null, lesson:null, xp:0, done:{} };
+try { const s=localStorage.getItem("what-trainer"); if(s){const p=JSON.parse(s);state.xp=p.xp||0;state.done=p.done||{}} } catch(e){}
+function save(){try{localStorage.setItem("what-trainer",JSON.stringify({xp:state.xp,done:state.done}))}catch(e){}}
+
+const app = document.getElementById("app");
+
+function imgTag(v, cls, extraStyle="") {
+  return `<img src="${v.img}" alt="${v.name}" class="${cls}" style="${extraStyle}"
+    onerror="this.outerHTML='<div class=\\'${cls} img-fallback\\' style=\\'${extraStyle}\\'><span class=\\'emoji\\'>${CATS[v.cat]?.e||'🔲'}</span>${v.name}</div>'">`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════
+function render() {
+  if(state.screen==="home") renderHome();
+  else if(state.screen==="module") renderModule();
+  else if(state.screen==="learn") renderLearn();
+  else if(state.screen==="quiz-what") renderQuizWhat();
+  else if(state.screen==="quiz-id") renderQuizId();
+  window.scrollTo({top:0,behavior:"instant"});
+}
+
+// ── HOME ──
+function renderHome(){
+  const mods = Object.entries(CATS).map(([id,info])=>({id,...info,vehicles:id==="master"?V.map(v=>v.id):V.filter(v=>v.cat===id).map(v=>v.id)}));
+  const modKeys = mods.map(m=>m.id);
+
+  let html = `<div class="page">
+    <div style="text-align:center;padding:40px 0 20px">
+      <div class="pill" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#78350f;margin-bottom:16px;box-shadow:0 2px 12px rgba(245,158,11,.25)">
+        ⭐ ${state.xp} XP
+      </div>
+      <h1 style="font-size:30px;font-weight:900;letter-spacing:-.5px;color:#0f172a">🎯 WHAT-Trainer</h1>
+      <p style="color:#64748b;font-size:14px;margin-top:6px;font-weight:600">Ryska stridsfordon — WHAT-analys</p>
+      <div style="display:inline-flex;gap:12px;margin-top:12px;background:#f1f5f9;border-radius:12px;padding:8px 16px">
+        ${Object.entries(WL).map(([k,l])=>`<div style="text-align:center"><div style="font-size:16px">${WI[k]}</div><div style="font-size:10px;color:${WC[k]};font-weight:800">${l}</div></div>`).join("")}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">`;
+
+  mods.forEach((mod,mi)=>{
+    const dc=["learn","quiz-what","quiz-id"].filter(t=>state.done[`${mod.id}-${t}`]).length;
+    const prevId = mi>0?modKeys[mi-1]:null;
+    const isMaster = mod.id==="master";
+    const locked = isMaster ? mods.slice(0,-1).some(m=>!state.done[`${m.id}-learn`]) : (mi>0&&mi<mods.length-1&&!state.done[`${prevId}-learn`]);
+
+    html+=`<div class="card ${locked?'locked':''}" onclick="${locked?'':`state.mod='${mod.id}';state.screen='module';render()`}" style="border-color:${locked?'#e2e8f0':mod.c+'33'};animation:fadeIn .3s ease ${mi*.05}s both">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:48px;height:48px;border-radius:14px;background:${locked?'#e2e8f0':mod.bg};display:flex;align-items:center;justify-content:center;font-size:22px;border:2px solid ${locked?'#cbd5e1':mod.c+'44'};flex-shrink:0">${locked?'🔒':mod.e}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">${mod.l}</div><div style="font-size:12px;color:#94a3b8;margin-top:1px">${mod.vehicles.length} fordon</div></div>
+        <div style="background:${dc===3?'#dcfce7':'#f1f5f9'};color:${dc===3?'#16a34a':'#94a3b8'};border-radius:10px;padding:4px 10px;font-size:13px;font-weight:800">${dc}/3</div>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:10px">
+        ${["learn","quiz-what","quiz-id"].map(t=>`<div style="flex:1;height:4px;border-radius:2px;background:${state.done[`${mod.id}-${t}`]?mod.c:'#e2e8f0'};transition:background .3s"></div>`).join("")}
+      </div>
+    </div>`;
+  });
+
+  html+=`</div></div>`;
+  app.innerHTML=html;
+}
+
+// ── MODULE ──
+function renderModule(){
+  const catId=state.mod;
+  const info=CATS[catId];
+  const vids=catId==="master"?V.map(v=>v.id):V.filter(v=>v.cat===catId).map(v=>v.id);
+  const lessons=[
+    {type:"learn",icon:"📖",title:"Studera WHAT-analys",desc:"Se bilder & lär dig utmärkande drag"},
+    {type:"quiz-what",icon:"🧠",title:"WHAT-quiz",desc:"Matcha beskrivning till rätt fordon"},
+    {type:"quiz-id",icon:"🎯",title:"Bild-ID prov",desc:"Se bilden → namnge fordonet"}
+  ];
+
+  let html=`<div class="page">
+    <button class="back-btn" onclick="state.screen='home';render()">← Tillbaka</button>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="width:64px;height:64px;border-radius:20px;margin:0 auto 12px;background:${info.bg};display:flex;align-items:center;justify-content:center;font-size:32px;border:3px solid ${info.c}44">${info.e}</div>
+      <h2 style="font-size:22px;font-weight:900;color:#0f172a">${info.l}</h2>
+    </div>
+    <div style="display:flex;gap:8px;overflow-x:auto;padding:0 0 12px;-webkit-overflow-scrolling:touch">
+      ${vids.map(id=>{const v=getV(id);return`<div style="flex-shrink:0;width:100px;text-align:center">${imgTag(v,"vehicle-img-sm")}<div style="font-size:11px;font-weight:700;color:#475569;margin-top:4px">${v.name}</div></div>`}).join("")}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">`;
+
+  lessons.forEach((l,li)=>{
+    const done=state.done[`${catId}-${l.type}`];
+    const locked=li>0&&!state.done[`${catId}-${lessons[li-1].type}`];
+    html+=`<div class="card ${locked?'locked':''}" onclick="${locked?'':`startLesson('${catId}','${l.type}')`}" style="display:flex;align-items:center;gap:14px;${done?'background:#f0fdf4;border-color:#86efac':''}">
+      <div style="width:44px;height:44px;border-radius:12px;background:${done?'#16a34a':locked?'#e2e8f0':info.bg};color:${done?'#fff':locked?'#94a3b8':info.c};display:flex;align-items:center;justify-content:center;font-size:${done?'20':'22'}px;font-weight:800;flex-shrink:0">${done?'✓':locked?'🔒':l.icon}</div>
+      <div><div style="font-weight:800;font-size:15px">${l.title}</div><div style="font-size:12px;color:#94a3b8;margin-top:2px">${l.desc}</div></div>
+    </div>`;
+  });
+
+  html+=`</div></div>`;
+  app.innerHTML=html;
+}
+
+function startLesson(catId,type){
+  state.mod=catId;state.lesson=type;state.screen=type;
+  if(type==="learn") initLearn(catId);
+  else if(type==="quiz-what") initQuizWhat(catId);
+  else if(type==="quiz-id") initQuizId(catId);
+}
+
+// ── LEARN ──
+let learnState={};
+function initLearn(catId){
+  const vids=catId==="master"?V.map(v=>v.id):V.filter(v=>v.cat===catId).map(v=>v.id);
+  learnState={vids,vi:0,expanded:null,showTips:false};
+  renderLearn();
+}
+function renderLearn(){
+  const {vids,vi,expanded,showTips}=learnState;
+  const v=getV(vids[vi]);
+  const ci=CATS[v.cat];
+  const catId=state.mod;
+
+  let html=`<div class="page">
+    <div class="topbar"><button class="back-btn" onclick="state.screen='module';render()">← Avbryt</button><span class="counter">${vi+1} / ${vids.length}</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${((vi+1)/vids.length)*100}%;background:${ci.c}"></div></div>
+    <div style="border-radius:20px;overflow:hidden;margin-bottom:16px;box-shadow:0 4px 20px rgba(0,0,0,.08)">${imgTag(v,"vehicle-img")}</div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div class="pill" style="background:${ci.bg};border:1px solid ${ci.c}33;margin-bottom:8px"><span style="font-size:12px">${ci.e}</span><span style="color:${ci.c};font-weight:800;letter-spacing:1px">${v.type}</span></div>
+      <h2 style="font-size:26px;font-weight:900;color:#0f172a">${v.name}</h2>
+      <p style="color:#64748b;font-size:13px;line-height:1.5;padding:0 10px;margin-top:4px">${v.desc}</p>
+    </div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.03)">
+      <div style="font-size:11px;color:#94a3b8;font-weight:800;letter-spacing:2px;margin-bottom:12px">WHAT-ANALYS</div>`;
+
+  ["w","h","a","t"].forEach(k=>{
+    const isOpen=expanded===k;
+    html+=`<div class="what-card ${isOpen?'open':''}" style="${isOpen?'background:'+WC[k]+'08;border-color:'+WC[k]+'44':''}" onclick="learnState.expanded=learnState.expanded==='${k}'?null:'${k}';renderLearn()">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;border-radius:10px;background:${WC[k]}15;color:${WC[k]};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800">${WI[k]}</div>
+        <span style="font-weight:800;color:${WC[k]};font-size:13px;letter-spacing:.5px">${WL[k]}</span>
+        <span style="margin-left:auto;color:#cbd5e1;font-size:16px;transition:transform .2s;${isOpen?'transform:rotate(180deg)':''}">▾</span>
+      </div>
+      ${isOpen?`<div class="body">${v.what[k]}</div>`:''}
+    </div>`;
+  });
+
+  html+=`</div>
+    <div class="tip-box" style="margin-bottom:20px" onclick="learnState.showTips=!learnState.showTips;renderLearn()">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">💡</span><span style="font-weight:800;color:#92400e;font-size:14px">Snabbtips & Förväxlingsrisker</span>
+        <span style="margin-left:auto;color:#d97706;transition:transform .2s;${showTips?'transform:rotate(180deg)':''}">▾</span>
+      </div>
+      ${showTips?`<div style="margin-top:10px">${v.tips.map(t=>`<div class="tip-item">${t}</div>`).join("")}</div>`:''}
+    </div>
+    <button class="btn-primary" style="background:${ci.c};box-shadow:0 4px 16px ${ci.c}33" onclick="${vi<vids.length-1?`learnState.vi++;learnState.expanded=null;learnState.showTips=false;renderLearn();window.scrollTo({top:0,behavior:'smooth'})`:`state.xp+=30;save();state.done['${catId}-learn']=true;save();state.screen='module';render()`}">
+      ${vi<vids.length-1?'NÄSTA FORDON →':'✓ AVSLUTA LEKTION'}
+    </button>
+  </div>`;
+  app.innerHTML=html;
+}
+
+// ── QUIZ-WHAT ──
+let qwState={};
+function initQuizWhat(catId){
+  const vids=catId==="master"?V.map(v=>v.id):V.filter(v=>v.cat===catId).map(v=>v.id);
+  const cats=["w","h","a","t"];
+  const qs=shuffle(vids).map(vid=>{
+    const cat=cats[Math.floor(Math.random()*cats.length)];
+    const v=getV(vid);
+    const wrongs=shuffle(vids.filter(id=>id!==vid)).slice(0,3);
+    if(wrongs.length<3){const extras=shuffle(V.filter(x=>!vids.includes(x.id)).map(x=>x.id)).slice(0,3-wrongs.length);wrongs.push(...extras);}
+    return{v,cat,options:shuffle([{txt:v.what[cat],vid,ok:true},...wrongs.map(w=>({txt:getV(w).what[cat],vid:w,ok:false}))])};
+  });
+  qwState={qs,qi:0,sel:null,score:0,catId};
+  renderQuizWhat();
+}
+function renderQuizWhat(){
+  const{qs,qi,sel,score,catId}=qwState;
+  if(qi>=qs.length){
+    const passed=score>=qs.length*.6;
+    app.innerHTML=`<div class="page" style="padding-top:80px;text-align:center">
+      <div style="font-size:64px;animation:pop .4s ease">${score>=qs.length*.8?'🏆':score>=qs.length*.5?'👍':'📚'}</div>
+      <h2 style="font-size:28px;font-weight:900;margin-top:16px">${score}/${qs.length} rätt!</h2>
+      <p style="color:#64748b;margin:8px 0 30px;font-size:15px">${passed?'Bra jobbat!':'Öva mer och försök igen!'}</p>
+      <button class="btn-primary" style="background:${passed?'#16a34a':'#f59e0b'};max-width:280px;margin:0 auto" onclick="${passed?`state.done['${catId}-quiz-what']=true;save();`:''}state.screen='module';render()">
+        ${passed?'FORTSÄTT ✓':'FÖRSÖK IGEN'}
+      </button>
+    </div>`;
+    return;
+  }
+  const q=qs[qi];
+  const v=q.v;
+
+  let html=`<div class="page" style="padding-bottom:${sel!==null?'160':'40'}px">
+    <div class="topbar"><button class="back-btn" onclick="state.screen='module';render()">← Avbryt</button><span class="counter">${qi+1}/${qs.length}</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${((qi+1)/qs.length)*100}%;background:#3b82f6"></div></div>
+    <div style="border-radius:16px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.06)">${imgTag(v,"vehicle-img","height:160px")}</div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div class="pill" style="background:${WC[q.cat]}15"><span style="font-size:14px">${WI[q.cat]}</span><span style="color:${WC[q.cat]};font-weight:800">${WL[q.cat]}</span></div>
+      <h3 style="font-size:16px;font-weight:800;margin-top:8px">Vilken <span style="color:${WC[q.cat]}">${WL[q.cat]}</span>-beskrivning hör till <span style="color:#3b82f6">${v.name}</span>?</h3>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">`;
+
+  q.options.forEach((opt,oi)=>{
+    let cls='option-btn';
+    if(sel!==null){
+      if(opt.ok) cls+=' correct';
+      else if(oi===sel) cls+=' wrong';
+    }
+    const txt=opt.txt.length>110?opt.txt.slice(0,110)+'…':opt.txt;
+    html+=`<button class="${cls}" ${sel===null?`onclick="qwSelect(${oi})"`:''}>${txt}${sel!==null?`<div style="font-size:11px;color:#94a3b8;margin-top:4px;font-style:italic">— ${getV(opt.vid).name}</div>`:''}</button>`;
+  });
+
+  html+=`</div>`;
+
+  if(sel!==null){
+    const ok=q.options[sel].ok;
+    html+=`<div class="feedback ${ok?'correct':'wrong'}"><div class="inner">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:28px;animation:pop .3s ease">${ok?'🎉':'😬'}</span>
+        <span style="font-weight:900;font-size:20px;color:${ok?'#16a34a':'#dc2626'}">${ok?'Rätt!':'Fel!'}</span>
+        ${ok?'<span style="margin-left:auto;color:#16a34a;font-weight:800;font-size:14px">+10 XP</span>':''}
+      </div>
+      ${!ok?`<p style="color:#475569;font-size:14px;line-height:1.5;margin-bottom:12px">Rätt svar tillhör ${v.name}</p>`:''}
+      <button class="btn-primary" style="background:${ok?'#16a34a':'#dc2626'}" onclick="qwNext()">FORTSÄTT</button>
+    </div></div>`;
+  }
+
+  html+=`</div>`;
+  app.innerHTML=html;
+}
+window.qwSelect=function(oi){
+  qwState.sel=oi;
+  if(qwState.qs[qwState.qi].options[oi].ok){qwState.score++;state.xp+=10;save();}
+  renderQuizWhat();
+};
+window.qwNext=function(){
+  qwState.qi++;qwState.sel=null;
+  renderQuizWhat();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+// ── QUIZ-ID ──
+let qiState={};
+function initQuizId(catId){
+  const vids=catId==="master"?V.map(v=>v.id):V.filter(v=>v.cat===catId).map(v=>v.id);
+  const qs=shuffle(vids).map(vid=>{
+    const v=getV(vid);
+    const sameCat=shuffle(V.filter(x=>x.id!==vid&&x.cat===v.cat).map(x=>x.id)).slice(0,1);
+    const diffCat=shuffle(V.filter(x=>x.id!==vid&&x.cat!==v.cat).map(x=>x.id)).slice(0,2);
+    const wrongs=[...sameCat,...diffCat].slice(0,3);
+    return{v,options:shuffle([{name:v.name,id:v.id,ok:true},...wrongs.map(w=>({name:getV(w).name,id:w,ok:false}))])};
+  });
+  qiState={qs,qi:0,sel:null,score:0,hint:false,hints:0,catId};
+  renderQuizId();
+}
+function renderQuizId(){
+  const{qs,qi,sel,score,hint,catId}=qiState;
+  if(qi>=qs.length){
+    const passed=score>=qs.length*.6;
+    app.innerHTML=`<div class="page" style="padding-top:80px;text-align:center">
+      <div style="font-size:64px;animation:pop .4s ease">${score>=qs.length*.8?'🎖️':score>=qs.length*.5?'💪':'🔄'}</div>
+      <h2 style="font-size:28px;font-weight:900;margin-top:16px">${score}/${qs.length} rätt!</h2>
+      <p style="color:#64748b;margin:8px 0 30px">${passed?'Starkt! Du kan identifiera fordonen!':'Studera bilderna mer!'}</p>
+      <button class="btn-primary" style="background:${passed?'#16a34a':'#f59e0b'};max-width:280px;margin:0 auto" onclick="${passed?`state.done['${catId}-quiz-id']=true;save();`:''}state.screen='module';render()">
+        ${passed?'FORTSÄTT ✓':'FÖRSÖK IGEN'}
+      </button>
+    </div>`;
+    return;
+  }
+  const q=qs[qi];
+  const v=q.v;
+
+  let html=`<div class="page" style="padding-bottom:${sel!==null?'160':'40'}px">
+    <div class="topbar"><button class="back-btn" onclick="state.screen='module';render()">← Avbryt</button><span class="counter">${qi+1}/${qs.length}</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${((qi+1)/qs.length)*100}%;background:#ef4444"></div></div>
+    <div style="text-align:center;margin-bottom:12px"><div class="pill" style="background:#fef2f2;border:1px solid #fecaca">🎯 <span style="color:#dc2626;font-weight:800">IDENTIFIERA</span></div></div>
+    <div style="border-radius:20px;overflow:hidden;margin-bottom:16px;box-shadow:0 4px 24px rgba(0,0,0,.1)">${imgTag(v,"vehicle-img")}</div>
+    <h3 style="text-align:center;font-size:18px;font-weight:800;margin-bottom:16px">Vilket fordon är detta?</h3>`;
+
+  if(!hint){
+    html+=`<button class="hint-btn" style="margin-bottom:14px" onclick="qiState.hint=true;qiState.hints++;renderQuizId()">💡 Visa ledtråd (−10 XP)</button>`;
+  } else {
+    html+=`<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:14px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;color:#92400e;font-weight:800;margin-bottom:6px;letter-spacing:1px">LEDTRÅDAR</div>
+      ${v.tips.slice(0,2).map(t=>`<div class="tip-item">${t}</div>`).join("")}
+    </div>`;
+  }
+
+  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">`;
+  q.options.forEach((opt,oi)=>{
+    let cls='id-option';
+    if(sel!==null){
+      if(opt.ok) cls+=' correct';
+      else if(oi===sel) cls+=' wrong';
+    }
+    html+=`<button class="${cls}" ${sel===null?`onclick="qiSelect(${oi})"`:''}>${opt.name}</button>`;
+  });
+  html+=`</div>`;
+
+  if(sel!==null){
+    const ok=q.options[sel].ok;
+    html+=`<div class="feedback ${ok?'correct':'wrong'}"><div class="inner">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:28px;animation:pop .3s ease">${ok?'🎉':'😬'}</span>
+        <span style="font-weight:900;font-size:20px;color:${ok?'#16a34a':'#dc2626'}">${ok?'Rätt!':'Fel!'}</span>
+        ${ok?`<span style="margin-left:auto;color:#16a34a;font-weight:800;font-size:14px">+${hint?5:15} XP</span>`:''}
+      </div>
+      ${!ok?`<p style="color:#475569;font-size:14px;line-height:1.5;margin-bottom:12px">Det var <b>${v.name}</b> (${v.type}). ${v.tips[0]}</p>`:''}
+      <button class="btn-primary" style="background:${ok?'#16a34a':'#dc2626'}" onclick="qiNext()">FORTSÄTT</button>
+    </div></div>`;
+  }
+
+  html+=`</div>`;
+  app.innerHTML=html;
+}
+window.qiSelect=function(oi){
+  qiState.sel=oi;
+  if(qiState.qs[qiState.qi].options[oi].ok){qiState.score++;state.xp+=qiState.hint?5:15;save();}
+  renderQuizId();
+};
+window.qiNext=function(){
+  qiState.qi++;qiState.sel=null;qiState.hint=false;
+  renderQuizId();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+// Global helper
+window.startLesson=startLesson;
+
+// Initial render
+render();
+</script>
+</body>
+</html>
