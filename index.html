@@ -22,6 +22,12 @@ button:active{transform:scale(.97)}
 @keyframes pop{0%{transform:scale(.8)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 </style>
+<script type="module">
+import('https://cdn.jsdelivr.net/npm/web-haptics/+esm').then(function(m){
+  var WH=new(m.default||m.WebHaptics)();
+  window.__haptic=function(t){try{WH.trigger(t)}catch(e){}};
+}).catch(function(){});
+</script>
 </head>
 <body>
 <div id="app"></div>
@@ -174,6 +180,7 @@ var WHAT_KEYS=["w","h","a","t"];
 function gv(id){for(var i=0;i<V.length;i++)if(V[i].id===id)return V[i];return null}
 function shuffle(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=b[i];b[i]=b[j];b[j]=tmp}return b}
 function vidsFor(cat){if(cat==="master")return V.map(function(v){return v.id});return V.filter(function(v){return v.cat===cat}).map(function(v){return v.id})}
+function haptic(t){try{if(window.__haptic)window.__haptic(t)}catch(e){}}
 
 /* State */
 var xp=0, done={};
@@ -327,10 +334,28 @@ var QW={qs:[],qi:0,sel:-1,score:0};
 function initQW(){
   var vids=vidsFor(curMod);
   var qs=shuffle(vids).map(function(vid){
-    var cat=WHAT_KEYS[Math.floor(Math.random()*4)];
     var v=gv(vid);
-    var wrongs=shuffle(vids.filter(function(id){return id!==vid})).slice(0,3);
-    while(wrongs.length<3){var extras=shuffle(V.filter(function(x){return vids.indexOf(x.id)<0}).map(function(x){return x.id}));wrongs.push(extras[0])}
+    // Prefer a WHAT key where this vehicle's description is unique among the pool
+    var uniqKeys=WHAT_KEYS.filter(function(k){
+      return vids.every(function(id){return id===vid||gv(id).what[k]!==v.what[k]});
+    });
+    var cat=uniqKeys.length>0?uniqKeys[Math.floor(Math.random()*uniqKeys.length)]:WHAT_KEYS[Math.floor(Math.random()*4)];
+    var correctTxt=v.what[cat];
+    // Build wrong options: exclude any option with the same text as correct or already selected
+    var usedTxts=[correctTxt];
+    var wrongs=[];
+    shuffle(vids.filter(function(id){return id!==vid})).forEach(function(id){
+      if(wrongs.length>=3)return;
+      var txt=gv(id).what[cat];
+      if(usedTxts.indexOf(txt)<0){usedTxts.push(txt);wrongs.push(id);}
+    });
+    if(wrongs.length<3){
+      shuffle(V.filter(function(x){return vids.indexOf(x.id)<0}).map(function(x){return x.id})).forEach(function(id){
+        if(wrongs.length>=3)return;
+        var txt=gv(id).what[cat];
+        if(usedTxts.indexOf(txt)<0){usedTxts.push(txt);wrongs.push(id);}
+      });
+    }
     return{v:v,cat:cat,opts:shuffle([{txt:v.what[cat],vid:vid,ok:true}].concat(wrongs.map(function(w){return{txt:gv(w).what[cat],vid:w,ok:false}})))};
   });
   QW={qs:qs,qi:0,sel:-1,score:0};
@@ -484,7 +509,7 @@ document.addEventListener("click",function(e){
       if(QW.sel>=0)return;
       var oi=parseInt(el.dataset.qwOpt);
       QW.sel=oi;
-      if(QW.qs[QW.qi].opts[oi].ok){QW.score++;xp+=10;save()}
+      if(QW.qs[QW.qi].opts[oi].ok){QW.score++;xp+=10;save();haptic('success')}else{haptic('error')}
       renderQW();
       return;
     }
@@ -494,7 +519,7 @@ document.addEventListener("click",function(e){
       if(QI.sel>=0)return;
       var oi2=parseInt(el.dataset.qiOpt);
       QI.sel=oi2;
-      if(QI.qs[QI.qi].opts[oi2].ok){QI.score++;xp+=(QI.hint?5:15);save()}
+      if(QI.qs[QI.qi].opts[oi2].ok){QI.score++;xp+=(QI.hint?5:15);save();haptic('success')}else{haptic('error')}
       renderQI();
       return;
     }
