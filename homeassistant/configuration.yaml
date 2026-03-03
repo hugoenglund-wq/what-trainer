@@ -1,0 +1,269 @@
+# path /homeassistant/configuration.yaml
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+# --- UTILITY METERS (Nollställning & Ackumulering) ---
+utility_meter:
+  # Punkt 1: Netto-funktion (nollställs varje timme XX:00)
+  hourly_grid_import_lux:
+    source: sensor.energy_consumed_luxembourg
+    cycle: hourly
+  hourly_grid_export_lux:
+    source: sensor.energy_produced_luxembourg
+    cycle: hourly
+  solar_production_hourly:
+    source: sensor.solar_daily_energy_2
+    cycle: hourly
+
+  # Punkt 2 Workaround: Skapar evighetsmätare från "Today" för hög precision (0.1 kWh)
+  solis_battery_discharge_forever:
+    source: sensor.solis_battery_discharge_today
+  solis_battery_charge_forever:
+    source: sensor.solis_battery_charge_today
+  solar_produced_forever:
+    source: sensor.solar_daily_energy_2
+
+# --- INPUTS (Inställningar & Reglage) ---
+input_number:
+  max_allowed_energy_usage:
+    name: Max timförbrukning
+    initial: 3
+    min: 0
+    max: 10
+    step: 0.5
+
+  chargebox_total_power:
+    name: Inställd effekt laddare
+    initial: 3.9
+    min: 0
+    max: 11
+    step: 0.1
+
+  solis_manual_power_setting:
+    name: "Solis Manuell Effekt"
+    initial: 3000
+    min: 0
+    max: 10000
+    step: 500
+    unit_of_measurement: "W"
+    icon: mdi:flash-outline
+  solis_saved_power:
+    name: Sparad Solis Effekt
+    initial: 0
+    min: 0
+    max: 10000
+  energy_limit_margin:
+    name: Marginal för energiåterställning
+    initial: 0.5
+    min: 0.1
+    max: 2
+    step: 0.1
+  max_soc:
+    name: Max SOC
+    initial: 90
+    min: 1
+    max: 100
+    step: 5
+  solis_battery_max_energy:
+    name: Max energi batter (kWh)
+    initial: 30
+    min: 25
+    max: 35
+    step: 0.1
+
+input_boolean:
+  prioritera_ev:
+    name: Prioritera elbil
+    initial: false
+  import_limit_active:
+    name: Import begränsning aktiv
+    initial: true
+
+input_select:
+  internal_chargebox_status:
+    name: Saved Chargebox Status
+    options:
+      - "false"
+      - "På"
+      - "Schema"
+      - "Av"
+    initial: "false"
+  solis_control_mode_manual:
+    name: "Solis Driftläge"
+    options:
+      - "Auto"
+      - "Ladda (Force Charge)"
+      - "Ladda ur (Force Discharge)"
+    initial: "Auto"
+    icon: mdi:solar-power
+
+# --- TEMPLATES (Beräkningar) ---
+template:
+  - sensor:
+      # Dina gamla sensorer
+      - name: "Hourly Energy Consumption Luxembourg"
+        unit_of_measurement: "kWh"
+        icon: mdi:flash
+        state: >
+          {% set current = states('sensor.energy_consumed_luxembourg') | float(0) %}
+          {% set hour_start = states('sensor.hour_start_value') | float(0) %}
+          {{ (current - hour_start) | round(4) }}
+      - name: "Grid Import Timme Avrundad"
+        unique_id: grid_import_hourly_rounded
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total
+        state: >
+          {{ states('sensor.hourly_grid_import_lux') | float(0) | round(2) }}
+      - name: "Hour Start Value"
+        unit_of_measurement: "kWh"
+        state: >
+          {% set current = states('sensor.energy_consumed_luxembourg') | float(0) %}
+          {% set now = now() %}
+          {% if now.minute == 0 %}
+            {{ current }}
+          {% else %}
+            {{ states('sensor.hour_start_value') | float(0) }}
+          {% endif %}
+
+      # --- NYA SENSORER ---
+
+      # Punkt 1: Nettokonsumtion innevarande timme
+      - name: "Nettokonsumtion denna timme"
+        unique_id: net_consumption_current_hour
+        unit_of_measurement: "kWh"
+        state: >
+          {% set inp = states('sensor.hourly_grid_import_lux') | float(0) %}
+          {% set out = states('sensor.hourly_grid_export_lux') | float(0) %}
+          {{ (inp - out) | round(2) }}
+
+      # Punkt 3: Hushållets momentana förbrukning i kW
+      - name: "Hushållets momentana förbrukning"
+        unique_id: house_power_instant_kw
+        unit_of_measurement: "kW"
+        device_class: power
+        state_class: measurement
+        state: >
+          {# Hämta och konvertera kW till W #}
+          {% set grid_cons = states('sensor.power_consumed') | float(0) * 1000 %}
+          {% set grid_prod = states('sensor.power_produced') | float(0) * 1000 %}
+
+
+          {# Dessa är redan i W #}
+          {% set solar = states('sensor.solar_ac_power_3') | float(0) %}
+          {% set batt = states('sensor.solis_battery_power_smart') | float(0) %}
+          {% set ev = states('sensor.laddbox_effekt_total') | float(0)%}
+
+          {# Beräkning av husets förbrukning (allt i Watt) #}
+          {# Formel: (Sol + Netto-elnät) - (Laddbox + Batteriladdning) #}
+          {% set total_in = solar + grid_cons - grid_prod %}
+          {% set house_w = total_in - ev - batt %}
+
+          {# Returnera i kW, lägsta värde 0 för att undvika mätbrus #}
+          {{ ([0, house_w] | max / 1000) | round(2) }}
+
+      # Punkt 2: Totalmätare för huset
+      - name: "Hushållets Totala Energiförbrukning Beräknad"
+        unique_id: house_total_energy_calc
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total
+        state: >
+          {# Källor (Tillförd energi) - Konvertera allt till kWh #}
+          {# Dela solar_daily_energy_2 med 1000 då den är i Wh #}
+          {% set solar_total = states('sensor.solar_produced_forever') | float(0) / 1000 %}
+          {% set grid_import = states('sensor.energy_consumed_luxembourg') | float(0) %}
+
+
+          {# Sänkor (Energi som lämnar systemet eller går till speciallaster) #}
+          {% set grid_export = states('sensor.energy_produced_luxembourg') | float(0) %}
+          {% set ev_total = states('sensor.laddbox_forbrukning') | float(0) %}
+
+          {# Denna ökar vid batteriladdning och minskar vid urladdning #}
+          {% set batt = states('sensor.solis_battery_energy_total') | float(0) %}
+
+          {# Formel: (Produktion + Import + Urladdning) - (Export + Laddning + Elbil) #}
+          {% set house_kwh = solar_total + grid_import - grid_export - batt - ev_total %}
+
+          {# Returnera värdet, lägsta tillåtna är 0 #}
+          {{ ([0, house_kwh] | max) | round(2) }}
+      - name: "Solar Power 10 min average safe"
+        unique_id: solar_power_10min_average_safe
+        unit_of_measurement: "W"
+        state: > 
+          {{ states("sensor.soleffekt_senaste_10_min_medel_2") | float(0) }}
+        
+       
+
+
+# --- STATISTICS (Rullande timme) ---
+sensor:
+  - platform: statistics
+    name: "Hushållets konsumtion Rullande Timme"
+    unique_id: house_consumption_rolling_1h
+    entity_id: sensor.house_total_energy_calc_integrated
+    state_characteristic: change
+    max_age:
+      hours: 1
+    sampling_size: 1000
+    precision: 2
+  - platform: integration
+    source: sensor.solis_battery_power_smart
+    name: "Solis Battery Energy Total"
+    unique_id: solis_battery_energy_total
+    unit_prefix: k
+    round: 2
+    method: left # Viktigt för att få hög precision vid effekttoppar
+  - platform: integration
+    source: sensor.hushallets_momentana_forbrukning
+    name: "House Total Energy Calc Integrated"
+    unique_id: house_total_energy_calc_integrated
+    round: 2
+    method: left
+  - platform: rest
+    name: Växelkurs EUR till SEK
+    unique_id: exchange_rate_eur_sek
+    resource: https://api.frankfurter.app/latest?from=EUR&to=SEK
+    value_template: "{{ value_json.rates.SEK }}"
+    unit_of_measurement: "SEK"
+    scan_interval: 3600 # Uppdatera en gång i timmen
+  - platform: statistics
+    name: "Soleffekt Senaste 10 Min Medel"
+    unique_id: sensor.soleffekt_senaste_10_min_medel
+    entity_id: sensor.solar_ac_power_3
+    state_characteristic: mean
+    max_age:
+      minutes: 10
+    sampling_size: 200
+    precision: 0
+mqtt:
+  sensor:
+    - name: "Elpris AI Prognos"
+      unique_id: "elpris_ai_prognos_100h"
+      state_topic: "energy/forecast/100h"
+      value_template: "{{ value_json.price }}"
+      unit_of_measurement: "SEK/kWh"
+      icon: mdi:crystal-ball
+      json_attributes_topic: "energy/forecast/100h"
+influxdb:
+  host: a0d7b954-influxdb
+  port: 8086
+  database: homeassistant
+  username: homeassistant
+  password: A4xgtgaZXf2bno1gAH0V
+
+
+# --- PACKAGES (Inkluderade filer) ---
+homeassistant:
+  packages:
+    garo_chargebox: !include garo_chargebox/pkg_garo_chargebox.yaml
+    solis_sensors: !include solis_modbus/solis_sensors.yaml
+    sma_sensors: !include sma_modbus/sma_sensors.yaml

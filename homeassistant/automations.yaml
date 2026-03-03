@@ -1,0 +1,112 @@
+- alias: Update Hourly Start Value
+  trigger:
+  - platform: time_pattern
+    minutes: 0
+  action:
+  - service: homeassistant.update_entity
+    target:
+      entity_id: sensor.hour_start_value
+  id: 50269f2c743f4e7bbcc66d20d8809892
+- alias: 'Solis: Manuell Styrning'
+  description: Skickar inställningar till Solis och nollställer motsatt register för
+    att undvika konflikt.
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_select.solis_control_mode_manual
+  - platform: state
+    entity_id: input_number.solis_manual_power_setting
+  - platform: time_pattern
+    minutes: /4
+  action:
+  - variables:
+      mode_selection: '{{ states(''input_select.solis_control_mode_manual'') }}'
+      power_setting_w: '{{ states(''input_number.solis_manual_power_setting'') | int(0)
+        }}'
+      power_val_modbus: '{{ (power_setting_w / 10) | int(0) }}'
+  - choose:
+    - conditions: '{{ ''Auto'' in mode_selection }}'
+      sequence:
+      - service: modbus.write_register
+        data:
+          hub: solis_inverter
+          slave: 1
+          address: 43136
+          value: 0
+      - service: modbus.write_register
+        data:
+          hub: solis_inverter
+          slave: 1
+          address: 43129
+          value: 0
+      - service: modbus.write_register
+        data:
+          hub: solis_inverter
+          slave: 1
+          address: 43135
+          value: 0
+    - conditions: '{{ ''Ladda'' in mode_selection and ''ur'' not in mode_selection
+        }}'
+      sequence:
+      - service: modbus.write_register
+        data:
+          hub: solis_inverter
+          slave: 1
+          address: 43129
+          value: 0
+      - delay: 00:00:01
+      - service: modbus.write_register
+        data:
+          hub: solis_inverter
+          slave: 1
+          address: 43136
+          value: '{{ power_val_modbus }}'
+      - delay: 00:00:01
+      - service: modbus.write_register
+        data:
+          hub: solis_inverter
+          slave: 1
+          address: 43135
+          value: 1
+    - conditions: '{{ ''Ladda ur'' in mode_selection }}'
+      sequence:
+      - service: modbus.write_register
+        data:
+          hub: solis_inverter
+          slave: 1
+          address: 43136
+          value: 0
+      - delay: 00:00:01
+      - service: modbus.write_register
+        data:
+          hub: solis_inverter
+          slave: 1
+          address: 43129
+          value: '{{ power_val_modbus }}'
+      - delay: 00:00:01
+      - service: modbus.write_register
+        data:
+          hub: solis_inverter
+          slave: 1
+          address: 43135
+          value: 2
+  - delay: 00:00:04
+  - service: homeassistant.update_entity
+    target:
+      entity_id: sensor.solis_battery_power_raw
+  id: 1597804c6c604458bdaf497c839ed18e
+- id: '1769347400079'
+  alias: notis förbrukning
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.hourly_grid_import_lux
+    above: input_number.max_allowed_energy_usage
+  conditions: []
+  actions:
+  - action: notify.send_message
+    metadata: {}
+    data:
+      message: Timförbrukning över gräns!
+  mode: single
